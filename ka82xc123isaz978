@@ -1,0 +1,203 @@
+-- Chloe X supported-game loader with an optional local Monitor connection.
+
+local games = {
+    [6701277882] = "https://raw.githubusercontent.com/MajestySkie/Chloe-X/refs/heads/main/Games/FishIt.lua",
+    [8144728961] = "https://raw.githubusercontent.com/MajestySkie/Chloe-X/refs/heads/main/Games/Abyss.lua",
+    [9509842868] = "https://raw.githubusercontent.com/MajestySkie/Chloe-X/refs/heads/main/Games/GardenHorizon.lua",
+    [9691752199] = "https://raw.githubusercontent.com/MajestySkie/Chloe-X/refs/heads/main/Games/SawahIndo.lua",
+    [9186719164] = "https://raw.githubusercontent.com/MajestySkie/Chloe-X/refs/heads/main/Games/Sailor.lua",
+    [9792947201] = "https://raw.githubusercontent.com/MajestySkie/Chloe-X/refs/heads/main/Games/SlimeRNG.lua",
+    [10200395747] = "https://raw.githubusercontent.com/MajestySkie/Chloe-X/refs/heads/main/Games/GrowGarden2.lua",
+}
+
+local CoreGui = game:GetService("CoreGui")
+local StarterGui = game:GetService("StarterGui")
+local environment = (getgenv and getgenv()) or _G
+local gameUrl = games[game.GameId]
+
+local function notify(title, text, duration)
+    pcall(function()
+        StarterGui:SetCore("SendNotification", { Title = title, Text = text, Duration = duration or 5 })
+    end)
+end
+
+if not gameUrl then
+    notify("Chloe Notification", "Unsupported game. Sorry....", 5)
+    return
+end
+
+local function loadSupportedGame()
+    notify("Chloe Notification", "Supported game! Loading....", 5)
+    local ok, source = pcall(game.HttpGet, game, gameUrl)
+    if not ok then
+        notify("Chloe Loader", "Failed to download the game script.", 7)
+        warn("[CHX Loader] " .. tostring(source))
+        return false
+    end
+    local chunk, compileError = loadstring(source)
+    if not chunk then
+        notify("Chloe Loader", "The game script could not be compiled.", 7)
+        warn("[CHX Loader] " .. tostring(compileError))
+        return false
+    end
+    task.spawn(chunk)
+    return true
+end
+
+local requestFn =
+    (type(request) == "function" and request)
+    or (type(http_request) == "function" and http_request)
+    or (type(syn) == "table" and type(syn.request) == "function" and syn.request)
+    or (type(http) == "table" and type(http.request) == "function" and http.request)
+
+local function startMonitor()
+    if type(requestFn) ~= "function" then
+        return false, "This executor does not expose a supported request function."
+    end
+    environment.CHLOE_MONITOR_CAPTURE_UI = true
+    for port = 47821, 47830 do
+        local ok, response = pcall(requestFn, {
+            Url = string.format("http://127.0.0.1:%d/v1/client.lua", port),
+            Method = "GET",
+        })
+        local status = ok and type(response) == "table" and tonumber(response.StatusCode or response.Status or response.status_code)
+        local body = ok and type(response) == "table" and (response.Body or response.body)
+        if status == 200 and type(body) == "string" and body ~= "" then
+            local heartbeat, compileError = loadstring(body)
+            if not heartbeat then return false, tostring(compileError) end
+            task.spawn(heartbeat)
+            local deadline = os.clock() + 5
+            repeat task.wait(0.05) until type(environment.CHLOE_MONITOR_KEY) == "string" or os.clock() >= deadline
+            if type(environment.CHLOE_MONITOR_KEY) ~= "string" then
+                return false, "Monitor client started but no Secret-Key was generated."
+            end
+            if type(setclipboard) == "function" then pcall(setclipboard, environment.CHLOE_MONITOR_KEY) end
+            return true, environment.CHLOE_MONITOR_KEY
+        end
+    end
+    return false, "Open Chloe X Monitor first, then try again."
+end
+
+pcall(function()
+    local previous = CoreGui:FindFirstChild("ChloeXConnectionOverlay")
+    if previous then previous:Destroy() end
+end)
+
+local gui = Instance.new("ScreenGui")
+gui.Name = "ChloeXConnectionOverlay"
+gui.IgnoreGuiInset = true
+gui.ResetOnSpawn = false
+gui.DisplayOrder = 999999
+gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+gui.Parent = (type(gethui) == "function" and gethui()) or CoreGui
+
+local shade = Instance.new("Frame")
+shade.Size = UDim2.fromScale(1, 1)
+shade.BackgroundColor3 = Color3.fromRGB(2, 8, 13)
+shade.BackgroundTransparency = 0.2
+shade.BorderSizePixel = 0
+shade.Parent = gui
+
+local card = Instance.new("Frame")
+card.AnchorPoint = Vector2.new(0.5, 0.5)
+card.Position = UDim2.fromScale(0.5, 0.5)
+card.Size = UDim2.new(0.88, 0, 0, 165)
+card.BackgroundColor3 = Color3.fromRGB(6, 25, 36)
+card.BackgroundTransparency = 0.05
+card.BorderSizePixel = 0
+card.Parent = shade
+Instance.new("UICorner", card).CornerRadius = UDim.new(0, 16)
+local sizeLimit = Instance.new("UISizeConstraint", card)
+sizeLimit.MinSize = Vector2.new(310, 165)
+sizeLimit.MaxSize = Vector2.new(420, 165)
+local stroke = Instance.new("UIStroke", card)
+stroke.Color = Color3.fromRGB(55, 190, 239)
+stroke.Transparency = 0.45
+stroke.Thickness = 1
+
+local padding = Instance.new("UIPadding", card)
+padding.PaddingTop = UDim.new(0, 15)
+padding.PaddingBottom = UDim.new(0, 14)
+padding.PaddingLeft = UDim.new(0, 22)
+padding.PaddingRight = UDim.new(0, 22)
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 28)
+title.BackgroundTransparency = 1
+title.Text = "Want control with Monitor?"
+title.TextColor3 = Color3.fromRGB(238, 249, 255)
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.Font = Enum.Font.GothamBold
+title.TextSize = 20
+title.Parent = card
+
+local description = Instance.new("TextLabel")
+description.Position = UDim2.fromOffset(0, 31)
+description.Size = UDim2.new(1, 0, 0, 32)
+description.BackgroundTransparency = 1
+description.Text = "Control this game through Chloe X Monitor. We will generate a Secret-Key to connect your session :3"
+description.TextColor3 = Color3.fromRGB(143, 177, 194)
+description.TextWrapped = true
+description.TextXAlignment = Enum.TextXAlignment.Left
+description.TextYAlignment = Enum.TextYAlignment.Top
+description.Font = Enum.Font.Gotham
+description.TextSize = 12
+description.Parent = card
+
+local statusLabel = Instance.new("TextLabel")
+statusLabel.Position = UDim2.fromOffset(0, 65)
+statusLabel.Size = UDim2.new(1, 0, 0, 16)
+statusLabel.BackgroundTransparency = 1
+statusLabel.Text = ""
+statusLabel.TextColor3 = Color3.fromRGB(255, 198, 92)
+statusLabel.TextXAlignment = Enum.TextXAlignment.Left
+statusLabel.Font = Enum.Font.GothamMedium
+statusLabel.TextSize = 12
+statusLabel.Parent = card
+
+local function button(text, position, color)
+    local item = Instance.new("TextButton")
+    item.Position = position
+    item.Size = UDim2.new(0.5, -6, 0, 43)
+    item.BackgroundColor3 = color
+    item.BorderSizePixel = 0
+    item.Text = text
+    item.TextColor3 = Color3.fromRGB(239, 249, 255)
+    item.Font = Enum.Font.GothamBold
+    item.TextSize = 12
+    item.AutoButtonColor = true
+    item.Parent = card
+    Instance.new("UICorner", item).CornerRadius = UDim.new(0, 11)
+    return item
+end
+
+local monitorButton = button("Copy Key & Continue", UDim2.new(0, 0, 1, -43), Color3.fromRGB(16, 139, 188))
+local normalButton = button("Continue Without Monitor", UDim2.new(0.5, 6, 1, -43), Color3.fromRGB(20, 52, 69))
+local decided = false
+
+normalButton.Activated:Connect(function()
+    if decided then return end
+    decided = true
+    gui:Destroy()
+    loadSupportedGame()
+end)
+
+monitorButton.Activated:Connect(function()
+    if decided then return end
+    monitorButton.Text = "Connecting..."
+    statusLabel.Text = "Looking for Chloe X Monitor on this device..."
+    local ok, result = startMonitor()
+    if not ok then
+        monitorButton.Text = "Try Again"
+        statusLabel.Text = result
+        notify("Chloe X Monitor", result, 6)
+        return
+    end
+    decided = true
+    statusLabel.TextColor3 = Color3.fromRGB(70, 229, 173)
+    statusLabel.Text = "Secret-Key Successfully Copied! "
+    monitorButton.Text = "Connected"
+    task.wait(0.65)
+    gui:Destroy()
+    loadSupportedGame()
+end)

@@ -1,13 +1,7 @@
 -- Chloe X supported-game loader with an optional local Monitor connection.
 
 local games = {
-    [6701277882] = "https://raw.githubusercontent.com/MajestySkie/Chloe-X/refs/heads/main/Games/FishIt.lua",
-    [8144728961] = "https://raw.githubusercontent.com/MajestySkie/Chloe-X/refs/heads/main/Games/Abyss.lua",
-    [9509842868] = "https://raw.githubusercontent.com/MajestySkie/Chloe-X/refs/heads/main/Games/GardenHorizon.lua",
-    [9691752199] = "https://raw.githubusercontent.com/MajestySkie/Chloe-X/refs/heads/main/Games/SawahIndo.lua",
-    [9186719164] = "https://raw.githubusercontent.com/MajestySkie/Chloe-X/refs/heads/main/Games/Sailor.lua",
-    [9792947201] = "https://raw.githubusercontent.com/MajestySkie/Chloe-X/refs/heads/main/Games/SlimeRNG.lua",
-    [10200395747] = "https://raw.githubusercontent.com/MajestySkie/Chloe-X/refs/heads/main/Games/GrowGarden2.lua",
+    [10200395747] = "https://raw.githubusercontent.com/ChloeChronoa/21a0270b7f66a1e4c25933f13a1e5a1bbb4757578072930c8189131f9c6aaae1/refs/heads/main/95307755f3d4cdad72529801af83637b9b458c89a073c651f6c01b0b9f38ea62",
 }
 
 local CoreGui = game:GetService("CoreGui")
